@@ -19,8 +19,11 @@
 
 #include <hidl/Status.h>
 #include <hidl/MQDescriptor.h>
-#include <libavb_user/libavb_user.h>
+
 #include <android/hardware/boot/1.0/IBootControl.h>
+
+#include <libavb_user/libavb_user.h>
+#include <libavb_ab/avb_ab_flow.h>
 
 namespace android {
 namespace hardware {
