@@ -54,20 +54,24 @@ cc_binary {
     init_rc: ["android.hardware.boot@1.0-service.renesas.rc"],
     defaults: ["boot_control_defaults"],
     relative_install_path: "hw",
-    static_libs: [
-        "libavb_user",
-        "libfs_mgr",
-    ],
-    shared_libs: [
-        "libbase",
-        "liblog",
-        "libcutils",
-        "libhardware",
-        "libhidlbase",
-        "libhidltransport",
-        "libutils",
-        "android.hardware.boot@1.0",
-    ],
+    arch: {
+        arm64: {
+            static_libs: [
+                "libavb_user",
+                "libfs_mgr",
+            ],
+            shared_libs: [
+                "libbase",
+                "liblog",
+                "libcutils",
+                "libhardware",
+                "libhidlbase",
+                "libhidltransport",
+                "libutils",
+                "android.hardware.boot@1.0",
+            ],
+        },
+    },
     srcs: [
         "service.cpp",
         "bootcontrol_hal.cpp",
