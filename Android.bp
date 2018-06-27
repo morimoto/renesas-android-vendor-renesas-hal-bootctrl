@@ -27,11 +27,10 @@ cc_defaults {
         "-Wmissing-prototypes",
         "-Wno-psabi",
         "-Wno-unused-parameter",
+        "-Wno-unused-private-field",
         "-ffunction-sections",
         "-fstack-protector-strong",
         "-g",
-        "-DAVB_ENABLE_DEBUG",
-        "-DAVB_COMPILATION",
     ],
     cppflags: [
         "-Wnon-virtual-dtor",
@@ -56,10 +55,6 @@ cc_binary {
     relative_install_path: "hw",
     arch: {
         arm64: {
-            static_libs: [
-                "libavb_user",
-                "libfs_mgr",
-            ],
             shared_libs: [
                 "libbase",
                 "liblog",
