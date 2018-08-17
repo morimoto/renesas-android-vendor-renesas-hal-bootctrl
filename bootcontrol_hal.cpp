@@ -159,7 +159,7 @@ uint32_t BootControl::CRC32(const uint8_t* buf, size_t size) {
 
 /* Return the little-endian representation of the CRC-32 */
 uint32_t BootControl::CalculateAvbABDataCRC(const AvbABData* ab_data) {
-    return htole32(CRC32(reinterpret_cast<const uint8_t*>(ab_data),
+    return be32toh(CRC32(reinterpret_cast<const uint8_t*>(ab_data),
             offsetof(AvbABData, crc32)));
 };
 
