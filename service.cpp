@@ -28,25 +28,26 @@ using android::hardware::configureRpcThreadpool;
 using android::hardware::joinRpcThreadpool;
 using android::hardware::boot::V1_0::IBootControl;
 using android::hardware::boot::V1_0::renesas::BootControl;
-
-const uint32_t MAX_THREADS = 1;
+using android::status_t;
+using android::OK;
 
 int main(int /* argc */, char * /* argv */ []) {
 
-    ALOGI("Loading BootControl HAL...");
+    fprintf(stderr, "Loading BootControl HAL...\n");
+
     android::sp<IBootControl> bootcontrol = new (std::nothrow) BootControl();
     if (bootcontrol == nullptr) {
-        ALOGE("Could not allocate BootControl.");
-        return 1;
+        fprintf(stderr, "Could not allocate BootControl.\n");
+        return -ENOMEM;
     }
 
-    configureRpcThreadpool(MAX_THREADS, true);
+    configureRpcThreadpool(1, true);
 
-    CHECK_EQ(bootcontrol->registerAsService(), android::NO_ERROR)
-        << "Failed to register BootControl HAL";
+    status_t status = bootcontrol->registerAsService();
+    if (status != android::OK) {
+        fprintf(stderr, "Failed to register BootControl HAL\n");
+        CHECK_NE(status, OK);
+    }
 
     joinRpcThreadpool();
-
-    ALOGI("BootControl HAL is terminating...");
-    return 0;
 }
