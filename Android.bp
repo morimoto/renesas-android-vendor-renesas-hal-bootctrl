@@ -51,6 +51,7 @@ cc_binary {
     name: "android.hardware.boot@1.0-service.renesas",
     vendor: true,
     init_rc: ["android.hardware.boot@1.0-service.renesas.rc"],
+    vintf_fragments: ["android.hardware.boot@1.0-service.renesas.xml"],
     defaults: ["boot_control_defaults"],
     relative_install_path: "hw",
     shared_libs: [
