@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2018 GlobalLogic
+// Copyright (C) 2019 GlobalLogic
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,45 +14,12 @@
 // limitations under the License.
 //
 
-cc_defaults {
-    name: "boot_control_defaults",
-    cflags: [
-        "-D_FILE_OFFSET_BITS=64",
-        "-D_POSIX_C_SOURCE=199309L",
-        "-Wa,--noexecstack",
-        "-Werror",
-        "-Wall",
-        "-Wextra",
-        "-Wformat=2",
-        "-Wmissing-prototypes",
-        "-Wno-psabi",
-        "-Wno-unused-parameter",
-        "-Wno-unused-private-field",
-        "-ffunction-sections",
-        "-fstack-protector-strong",
-        "-g",
-    ],
-    cppflags: [
-        "-Wnon-virtual-dtor",
-        "-fno-strict-aliasing",
-    ],
-    ldflags: [
-        "-Wl,--gc-sections",
-        "-rdynamic",
-    ],
-    target: {
-        darwin: {
-            enabled: false,
-        },
-    },
-}
-
 cc_binary {
     name: "android.hardware.boot@1.0-service.renesas",
     vendor: true,
     init_rc: ["android.hardware.boot@1.0-service.renesas.rc"],
     vintf_fragments: ["android.hardware.boot@1.0-service.renesas.xml"],
-    defaults: ["boot_control_defaults"],
+    defaults: ["hidl_defaults"],
     relative_install_path: "hw",
     shared_libs: [
         "libbase",
@@ -67,5 +34,25 @@ cc_binary {
     srcs: [
         "service.cpp",
         "bootcontrol_hal.cpp",
+    ],
+}
+
+cc_library_shared {
+    name: "android.hardware.boot@1.0-impl-renesas",
+    defaults: ["hidl_defaults"],
+    relative_install_path: "hw",
+    recovery: true,
+    srcs: [
+        "bootcontrol_hal.cpp",
+    ],
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libcutils",
+        "libhidlbase",
+        "libhidltransport",
+        "libhardware",
+        "libutils",
+        "android.hardware.boot@1.0",
     ],
 }

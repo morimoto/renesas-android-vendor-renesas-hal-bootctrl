@@ -69,7 +69,6 @@ private:
 
     /* Versioning for the on-disk A/B metadata - keep in sync with avbtool */
     const uint32_t AVB_AB_MAJOR_VERSION = 1;
-    const uint32_t AVB_AB_MINOR_VERSION = 0;
 
     /* Maximum values for slot data */
     const uint32_t AVB_AB_MAX_PRIORITY = 15;
@@ -156,6 +155,8 @@ private:
     /* The slot where we are running from */
     uint32_t m_current_slot_index;
 };
+
+extern "C" IBootControl* HIDL_FETCH_IBootControl(const char* name);
 
 } // namespace renesas
 } // namespace V1_0

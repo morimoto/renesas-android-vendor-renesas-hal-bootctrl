@@ -369,6 +369,10 @@ Return<void> BootControl::getSuffix(uint32_t slot, getSuffix_cb _hidl_cb) {
     return Void();
 };
 
+IBootControl* HIDL_FETCH_IBootControl(const char * /* hal */) {
+    return new BootControl();
+}
+
 }  // namespace renesas
 }  // namespace V1_0
 }  // namespace boot
