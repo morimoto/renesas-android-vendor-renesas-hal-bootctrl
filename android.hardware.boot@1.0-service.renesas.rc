@@ -1,4 +1,0 @@
-service vendor.bootcontrol-1-0 /vendor/bin/hw/android.hardware.boot@1.0-service.renesas
-    class early_hal
-    user root
-    group root

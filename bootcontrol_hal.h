@@ -21,20 +21,26 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <mutex>
+
 #include <hidl/Status.h>
 #include <hidl/MQDescriptor.h>
 
-#include <android/hardware/boot/1.0/IBootControl.h>
+/* Contain structures for Virtual A/B update */
+#include <bootloader_message/bootloader_message.h>
+
+#include <android/hardware/boot/1.1/IBootControl.h>
 
 namespace android {
 namespace hardware {
 namespace boot {
-namespace V1_0 {
+namespace V1_1 {
 namespace renesas {
 
 using ::android::hardware::boot::V1_0::BoolResult;
 using ::android::hardware::boot::V1_0::CommandResult;
-using ::android::hardware::boot::V1_0::IBootControl;
+using ::android::hardware::boot::V1_1::IBootControl;
+using ::android::hardware::boot::V1_1::MergeStatus;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
 using ::android::hardware::hidl_string;
@@ -57,6 +63,9 @@ public:
     Return<BoolResult> isSlotMarkedSuccessful(uint32_t slot) override;
     Return<void> getSuffix(uint32_t slot, getSuffix_cb _hidl_cb) override;
 
+    /* Methods from ::android::hardware::boot::V1_1::IBootControl follow. */
+    Return<bool> setSnapshotMergeStatus(MergeStatus status) override;
+    Return<MergeStatus> getSnapshotMergeStatus() override;
 private:
 
     static const uint32_t AVB_AB_MAGIC_LEN = 4;
@@ -141,6 +150,9 @@ private:
     static_assert(sizeof(struct AvbABData) == 32,
             "struct AvbABData size changed, must be equal 32 bytes");
 
+    /* Max supported version of Virtual A/B header */
+    const uint32_t MAX_VIRTUAL_AB_MESSAGE_VERSION = 2;
+
     uint32_t GetCurrentSlotIndex(void);
     uint32_t SlotSuffixToIndex(const char* suffix);
     bool SlotIsBootable(AvbABSlotData* slot_data);
@@ -148,12 +160,24 @@ private:
     void SlotSetUnbootable(AvbABSlotData* slot_data);
     uint32_t CalculateAvbABDataCRC(const AvbABData* ab_data);
     uint32_t CRC32(const uint8_t* buf, size_t size);
-    bool LoadAvbABData(const char* misc_device, AvbABData* ab_data);
-    bool UpdateAndSaveAvbABData(const char* misc_device, AvbABData* ab_data);
+    bool ReadFromFile(const char* filepath, size_t offset,
+                void *buffer, size_t size);
+    bool WriteToFile(const char* filepath, size_t offset,
+                void* buffer, size_t size);
+    bool LoadAvbABData(AvbABData* ab_data);
+    bool UpdateAndSaveAvbABData(AvbABData* ab_data);
     bool ValidateAvbABData(const AvbABData* ab_data);
+
+    void InitVirtualABMessage(misc_virtual_ab_message *virtual_ab_data);
+    bool ValidateVirtualABMessage(misc_virtual_ab_message *virtual_ab_data);
+    bool LoadVirtualABMessage(misc_virtual_ab_message* virtual_ab_data);
+    bool SaveVirtualABMessage(misc_virtual_ab_message* virtual_ab_data);
 
     /* The slot where we are running from */
     uint32_t m_current_slot_index;
+
+    /* Needed to implement thread protection for Vitrual A/B status */
+    std::mutex m_merge_status_lock;
 };
 
 extern "C" IBootControl* HIDL_FETCH_IBootControl(const char* name);

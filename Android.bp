@@ -15,12 +15,13 @@
 //
 
 cc_binary {
-    name: "android.hardware.boot@1.0-service.renesas",
+    name: "android.hardware.boot@1.1-service.renesas",
     vendor: true,
-    init_rc: ["android.hardware.boot@1.0-service.renesas.rc"],
-    vintf_fragments: ["android.hardware.boot@1.0-service.renesas.xml"],
+    init_rc: ["android.hardware.boot@1.1-service.renesas.rc"],
+    vintf_fragments: ["android.hardware.boot@1.1-service.renesas.xml"],
     defaults: ["hidl_defaults"],
     relative_install_path: "hw",
+    include_dirs: ["bootable/recovery/bootloader_message/include"],
     shared_libs: [
         "libbase",
         "liblog",
@@ -29,6 +30,7 @@ cc_binary {
         "libhidlbase",
         "libutils",
         "android.hardware.boot@1.0",
+        "android.hardware.boot@1.1",
     ],
     srcs: [
         "service.cpp",
@@ -37,10 +39,11 @@ cc_binary {
 }
 
 cc_library_shared {
-    name: "android.hardware.boot@1.0-impl-renesas",
+    name: "android.hardware.boot@1.1-impl-renesas",
     defaults: ["hidl_defaults"],
     relative_install_path: "hw",
     recovery: true,
+    include_dirs: ["bootable/recovery/bootloader_message/include"],
     srcs: [
         "bootcontrol_hal.cpp",
     ],
@@ -52,5 +55,6 @@ cc_library_shared {
         "libhardware",
         "libutils",
         "android.hardware.boot@1.0",
+        "android.hardware.boot@1.1",
     ],
 }

@@ -40,7 +40,7 @@
 namespace android {
 namespace hardware {
 namespace boot {
-namespace V1_0 {
+namespace V1_1 {
 namespace renesas {
 
 BootControl::BootControl()
@@ -163,53 +163,70 @@ uint32_t BootControl::CalculateAvbABDataCRC(const AvbABData* ab_data) {
             offsetof(AvbABData, crc32)));
 };
 
-bool BootControl::LoadAvbABData(const char* misc_device, AvbABData* ab_data) {
-    android::base::unique_fd fd(open(misc_device, O_RDONLY));
+
+bool BootControl::ReadFromFile(const char* filepath, size_t offset,
+            void *buffer, size_t size) {
+    android::base::unique_fd fd(open(filepath, O_RDONLY));
     if (fd.get() == -1) {
-        ALOGE("Failed to open '/misc' partition");
-        return false;
-    }
-    if (lseek(fd, AVB_AB_METADATA_MISC_PARTITION_OFFSET, SEEK_SET)
-            != AVB_AB_METADATA_MISC_PARTITION_OFFSET) {
-        ALOGE("Failed to seek '/misc' partition");
-        return false;
-    }
-    if (!android::base::ReadFully(fd.get(), ab_data, sizeof(AvbABData))) {
-        ALOGE("Failed to read '/misc' partition");
+        ALOGE("Failed to open %s file", filepath);
         return false;
     }
 
-    if (!ValidateAvbABData(ab_data)) {
+    if (lseek(fd, offset, SEEK_SET) != offset) {
+        ALOGE("Failed to seek %s file to offset %zu", filepath, offset);
         return false;
     }
-#if 0
-    for (uint32_t slot = 0; slot < AVB_AB_MAX_SLOTS; ++slot) {
-        SlotNormalize(&ab_data->slots[slot]);
+
+    if (!android::base::ReadFully(fd.get(), buffer, size)) {
+        ALOGE("Failed to read from %s file", filepath);
+        return false;
     }
-#endif
+
     return true;
+}
+
+bool BootControl::WriteToFile(const char* filepath, size_t offset,
+            void* buffer, size_t size) {
+    android::base::unique_fd fd(open(filepath, O_WRONLY | O_SYNC));
+    if (fd.get() == -1) {
+        ALOGE("Failed to open %s file", filepath);
+        return false;
+    }
+
+    if (lseek(fd, offset, SEEK_SET) != offset) {
+        ALOGE("Failed to seek %s file to offset %zu", filepath, offset);
+        return false;
+    }
+
+    if (!android::base::WriteFully(fd.get(), buffer, size)) {
+        ALOGE("Failed to write into %s file", filepath);
+        return false;
+    }
+
+    return true;
+}
+
+bool BootControl::LoadAvbABData(AvbABData* ab_data) {
+    if (!ab_data) {
+        ALOGE("Invalid buffer passed to %s", __func__);
+        return false;
+    }
+
+    bool ret = ReadFromFile(AVB_AB_PROP_MISC_DEVICE,
+            AVB_AB_METADATA_MISC_PARTITION_OFFSET, ab_data, sizeof(*ab_data));
+    if (!ret) {
+        ALOGE("Failed to load AvbABData from /misc");
+        return false;
+    }
+
+    return ValidateAvbABData(ab_data);
 };
 
-bool BootControl::UpdateAndSaveAvbABData(const char* misc_device,
-        AvbABData* ab_data) {
+bool BootControl::UpdateAndSaveAvbABData(AvbABData* ab_data) {
     ab_data->crc32 = CalculateAvbABDataCRC(ab_data);
 
-    android::base::unique_fd fd(open(misc_device, O_WRONLY | O_SYNC));
-    if (fd.get() == -1) {
-        ALOGE("Failed to open '/misc' partition");
-        return false;
-    }
-    if (lseek(fd.get(), AVB_AB_METADATA_MISC_PARTITION_OFFSET, SEEK_SET)
-            != AVB_AB_METADATA_MISC_PARTITION_OFFSET) {
-        ALOGE("Failed to seek '/misc' partition");
-        return false;
-    }
-    if (!android::base::WriteFully(fd.get(), ab_data, sizeof(AvbABData))) {
-        ALOGE("Failed to write '/misc' partition");
-        return false;
-    }
-
-    return true;
+    return WriteToFile(AVB_AB_PROP_MISC_DEVICE,
+            AVB_AB_METADATA_MISC_PARTITION_OFFSET, ab_data, sizeof(*ab_data));
 };
 
 /* Returns the number of available slots */
@@ -229,14 +246,14 @@ Return<void> BootControl::markBootSuccessful(markBootSuccessful_cb _hidl_cb) {
     if (m_current_slot_index != AVB_AB_ERROR_SLOT_INDEX) {
 
         AvbABData ab_data;
-        if (LoadAvbABData(AVB_AB_PROP_MISC_DEVICE, &ab_data)) {
+        if (LoadAvbABData(&ab_data)) {
 
             if (SlotIsBootable(&ab_data.slots[m_current_slot_index])) {
 
                 ab_data.slots[m_current_slot_index].successful_boot = 1;
                 ab_data.slots[m_current_slot_index].tries_remaining = 0;
 
-                if (UpdateAndSaveAvbABData(AVB_AB_PROP_MISC_DEVICE, &ab_data)) {
+                if (UpdateAndSaveAvbABData(&ab_data)) {
                     ret = 0;
                 }
 
@@ -261,7 +278,7 @@ Return<void> BootControl::setActiveBootSlot(uint32_t slot,
     if (slot < getNumberSlots()) {
         ret = -EIO;
         AvbABData ab_data;
-        if (LoadAvbABData(AVB_AB_PROP_MISC_DEVICE, &ab_data)) {
+        if (LoadAvbABData(&ab_data)) {
 
             /* Make requested slot top priority, unsuccessful,
              * and with max tries
@@ -277,7 +294,7 @@ Return<void> BootControl::setActiveBootSlot(uint32_t slot,
                 ab_data.slots[other_slot].priority = AVB_AB_MAX_PRIORITY - 1;
             }
 
-            if (UpdateAndSaveAvbABData(AVB_AB_PROP_MISC_DEVICE, &ab_data)) {
+            if (UpdateAndSaveAvbABData(&ab_data)) {
                 ret = 0;
             }
         }
@@ -298,11 +315,11 @@ Return<void> BootControl::setSlotAsUnbootable(uint32_t slot,
     if (slot < getNumberSlots()) {
         ret = -EIO;
         AvbABData ab_data;
-        if (LoadAvbABData(AVB_AB_PROP_MISC_DEVICE, &ab_data)) {
+        if (LoadAvbABData(&ab_data)) {
 
             SlotSetUnbootable(&ab_data.slots[slot]);
 
-            if (UpdateAndSaveAvbABData(AVB_AB_PROP_MISC_DEVICE, &ab_data)) {
+            if (UpdateAndSaveAvbABData(&ab_data)) {
                 ret = 0;
             }
         }
@@ -324,7 +341,7 @@ Return<BoolResult> BootControl::isSlotBootable(uint32_t slot) {
 
     AvbABData ab_data;
 
-    if (!LoadAvbABData(AVB_AB_PROP_MISC_DEVICE, &ab_data)) {
+    if (!LoadAvbABData(&ab_data)) {
         return BoolResult::INVALID_SLOT;
     }
 
@@ -345,7 +362,7 @@ Return<BoolResult> BootControl::isSlotMarkedSuccessful(uint32_t slot) {
     AvbABData ab_data;
     bool is_marked_successful = false;
 
-    if (!LoadAvbABData(AVB_AB_PROP_MISC_DEVICE, &ab_data)) {
+    if (!LoadAvbABData(&ab_data)) {
         return BoolResult::INVALID_SLOT;
     }
 
@@ -368,6 +385,96 @@ Return<void> BootControl::getSuffix(uint32_t slot, getSuffix_cb _hidl_cb) {
     _hidl_cb(ans);
     return Void();
 };
+
+void BootControl::InitVirtualABMessage(misc_virtual_ab_message *virtual_ab_data) {
+    virtual_ab_data->magic = MISC_VIRTUAL_AB_MAGIC_HEADER;
+    virtual_ab_data->version = static_cast<uint8_t> (MAX_VIRTUAL_AB_MESSAGE_VERSION);
+    virtual_ab_data->merge_status = static_cast<uint8_t> (MergeStatus::NONE);
+    virtual_ab_data->source_slot = static_cast<uint8_t> (m_current_slot_index);
+}
+
+bool BootControl::ValidateVirtualABMessage(misc_virtual_ab_message *virtual_ab_data) {
+    return ((virtual_ab_data->magic == MISC_VIRTUAL_AB_MAGIC_HEADER) &&
+            (virtual_ab_data->version <= MAX_VIRTUAL_AB_MESSAGE_VERSION) &&
+            (static_cast<MergeStatus> (virtual_ab_data->merge_status) >= MergeStatus::NONE) &&
+            (static_cast<MergeStatus> (virtual_ab_data->merge_status) <= MergeStatus::CANCELLED) &&
+            (virtual_ab_data->source_slot < AVB_AB_MAX_SLOTS));
+}
+
+bool BootControl::LoadVirtualABMessage(misc_virtual_ab_message *virtual_ab_data) {
+    if (!virtual_ab_data) {
+        ALOGE("Invalid buffer passed to %s", __func__);
+        return false;
+    }
+
+    bool ret = ReadFromFile(AVB_AB_PROP_MISC_DEVICE, SYSTEM_SPACE_OFFSET_IN_MISC,
+                        virtual_ab_data, sizeof(*virtual_ab_data));
+    if (!ret) {
+        ALOGE("Failed to load Virtual A/B data from /misc");
+        return false;
+    }
+
+    if (!ValidateVirtualABMessage(virtual_ab_data)) {
+        ALOGE("Invalid Virtual A/B message magic, re-initializing it...");
+        InitVirtualABMessage(virtual_ab_data);
+    }
+
+    return true;
+}
+
+bool BootControl::SaveVirtualABMessage(misc_virtual_ab_message *virtual_ab_data) {
+    if (!virtual_ab_data || !ValidateVirtualABMessage(virtual_ab_data)) {
+        ALOGE("Invalid buffer passed to %s", __func__);
+        return false;
+    }
+
+    return WriteToFile(AVB_AB_PROP_MISC_DEVICE, SYSTEM_SPACE_OFFSET_IN_MISC,
+                    virtual_ab_data, sizeof(*virtual_ab_data));
+}
+
+Return<bool> BootControl::setSnapshotMergeStatus(MergeStatus status) {
+    ALOGD("Requested to set Virtual A/B merge status = %d", status);
+
+    /*
+     * Due to description in IBootControl.hal for v1.1 access to merge
+     * status should be atomic.
+     */
+    std::lock_guard<std::mutex> access_guard(m_merge_status_lock);
+
+    misc_virtual_ab_message virtual_ab_data;
+    if (!LoadVirtualABMessage(&virtual_ab_data)) {
+        ALOGE("Failed to load Virtual A/B data from misc partition!");
+        return false;
+    }
+
+    virtual_ab_data.source_slot = static_cast<uint8_t> (m_current_slot_index);
+    virtual_ab_data.merge_status = static_cast<uint8_t> (status);
+
+    if (!SaveVirtualABMessage(&virtual_ab_data)) {
+        ALOGE("Failed to save AVB data to misc partition!");
+        return false;
+    }
+
+    return true;
+}
+
+Return<MergeStatus> BootControl::getSnapshotMergeStatus() {
+    ALOGD("Requested to read Virtual A/B merge status");
+
+    /*
+     * Due to description in IBootControl.hal for v1.1 access to merge
+     * status should be atomic.
+     */
+    std::lock_guard<std::mutex> access_guard(m_merge_status_lock);
+
+    misc_virtual_ab_message virtual_ab_data;
+    if (!LoadVirtualABMessage(&virtual_ab_data)) {
+        ALOGE("Failed to load Virtual A/B data from misc partition!");
+        return MergeStatus::UNKNOWN;
+    }
+
+    return static_cast<MergeStatus> (virtual_ab_data.merge_status);
+}
 
 IBootControl* HIDL_FETCH_IBootControl(const char * /* hal */) {
     return new BootControl();

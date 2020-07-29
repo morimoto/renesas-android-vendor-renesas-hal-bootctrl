@@ -26,8 +26,8 @@
 
 using android::hardware::configureRpcThreadpool;
 using android::hardware::joinRpcThreadpool;
-using android::hardware::boot::V1_0::IBootControl;
-using android::hardware::boot::V1_0::renesas::BootControl;
+using android::hardware::boot::V1_1::IBootControl;
+using android::hardware::boot::V1_1::renesas::BootControl;
 using android::status_t;
 using android::OK;
 
