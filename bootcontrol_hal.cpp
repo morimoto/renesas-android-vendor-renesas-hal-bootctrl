@@ -166,16 +166,16 @@ uint32_t BootControl::CalculateAvbABDataCRC(const AvbABData* ab_data) {
 bool BootControl::LoadAvbABData(const char* misc_device, AvbABData* ab_data) {
     android::base::unique_fd fd(open(misc_device, O_RDONLY));
     if (fd.get() == -1) {
-        ALOGE("Failed to open '/mics' partition");
+        ALOGE("Failed to open '/misc' partition");
         return false;
     }
     if (lseek(fd, AVB_AB_METADATA_MISC_PARTITION_OFFSET, SEEK_SET)
             != AVB_AB_METADATA_MISC_PARTITION_OFFSET) {
-        ALOGE("Failed to seek '/mics' partition");
+        ALOGE("Failed to seek '/misc' partition");
         return false;
     }
     if (!android::base::ReadFully(fd.get(), ab_data, sizeof(AvbABData))) {
-        ALOGE("Failed to read '/mics' partition");
+        ALOGE("Failed to read '/misc' partition");
         return false;
     }
 
@@ -196,16 +196,16 @@ bool BootControl::UpdateAndSaveAvbABData(const char* misc_device,
 
     android::base::unique_fd fd(open(misc_device, O_WRONLY | O_SYNC));
     if (fd.get() == -1) {
-        ALOGE("Failed to open '/mics' partition");
+        ALOGE("Failed to open '/misc' partition");
         return false;
     }
     if (lseek(fd.get(), AVB_AB_METADATA_MISC_PARTITION_OFFSET, SEEK_SET)
             != AVB_AB_METADATA_MISC_PARTITION_OFFSET) {
-        ALOGE("Failed to seek '/mics' partition");
+        ALOGE("Failed to seek '/misc' partition");
         return false;
     }
     if (!android::base::WriteFully(fd.get(), ab_data, sizeof(AvbABData))) {
-        ALOGE("Failed to write '/mics' partition");
+        ALOGE("Failed to write '/misc' partition");
         return false;
     }
 
